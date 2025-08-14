@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,viewport-fit=cover">
+  <title>Sistema AR - Admin/Usuário</title>
+  <style>
+    html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;background:#111;color:#ddd}
+    
+    /* Tela Inicial */
+    #home-screen {
+      position:fixed;top:0;left:0;width:100%;height:100%;
+      background:linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      z-index:20;
+    }
+    
+    #home-screen h1 {
+      font-size:2.5em;margin-bottom:20px;text-align:center;
+      text-shadow:2px 2px 4px rgba(0,0,0,0.5);
+    }
+    
+    #home-screen p {
+      font-size:1.1em;margin-bottom:40px;text-align:center;
+      max-width:400px;line-height:1.5;opacity:0.9;
+    }
+    
+    .home-btn {
+      background:rgba(255,255,255,0.1);
+      border:2px solid rgba(255,255,255,0.3);
+      color:#fff;padding:20px 40px;margin:10px;
+      border-radius:12px;font-size:1.1em;cursor:pointer;
+      transition:all 0.3s ease;backdrop-filter:blur(10px);
+      min-width:200px;text-align:center;
+    }
+    
+    .home-btn:hover {
+      background:rgba(255,255,255,0.2);
+      border-color:rgba(255,255,255,0.5);
+      transform:translateY(-2px);
+    }
+    
+    .admin-btn {border-color:#ff6b35;color:#ff6b35}
+    .admin-btn:hover {background:rgba(255,107,53,0.2);border-color:#ff6b35}
+    
+    .user-btn {border-color:#4ecdc4;color:#4ecdc4}
+    .user-btn:hover {background:rgba(78,205,196,0.2);border-color:#4ecdc4}
+    
+    /* Telas da Aplicação */
+    #admin-screen, #user-screen {
+      display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    }
+    
+    #info{position:fixed;left:10px;top:10px;z-index:2;background:rgba(0,0,0,0.8);padding:15px;border-radius:8px;max-width:300px}
+    
+    #qr-scanner{
+      position:fixed;
+      top:0;left:0;width:100%;height:100%;
+      background:rgba(0,0,0,0.9);
+      display:none;
+      z-index:10;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center
+    }
+    
+    #qr-video{width:80%;max-width:400px;border-radius:8px}
+    
+    #qr-instructions{
+      color:#fff;text-align:center;margin:20px;
+      font-size:16px;background:rgba(0,0,0,0.7);
+      padding:15px;border-radius:8px
+    }
+    
+    .btn{
+      background:#007bff;color:#fff;border:none;
+      padding:12px 20px;border-radius:6px;
+      cursor:pointer;margin:5px;font-size:14px;
+      transition:background 0.3s ease;
+    }
+    
+    .btn:hover{background:#0056b3}
+    .btn:disabled{background:#666;cursor:not-allowed}
+    
+    .btn-back {
+      background:#6c757d;position:absolute;top:15px;right:15px;
+      z-index:3;
+    }
+    
+    .btn-back:hover {background:#545b62}
+    
+    #status{
+      position:fixed;bottom:20px;left:20px;
+      background:rgba(0,0,0,0.8);padding:10px;
+      border-radius:6px;z-index:5
+    }
+    
+    .status-calibrado{color:#00ff00}
+    .status-nao-calibrado{color:#ff6600}
+    
+    .admin-header {border-left:4px solid #ff6b35}
+    .user-header {border-left:4px solid #4ecdc4}
+    
+    canvas{display:block}
+    
+    /* Estatísticas para usuário */
+    #user-stats {
+      position:fixed;right:20px;top:20px;z-index:2;
+      background:rgba(0,0,0,0.8);padding:15px;border-radius:8px;
+      max-width:250px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TELA INICIAL -->
+  <div id="home-screen">
+    <h1>🎯 Sistema AR</h1>
+    <p>Sistema de realidade aumentada para navegação em eventos. Escolha seu modo de acesso:</p>
+    
+    <button class="home-btn admin-btn" onclick="enterAdminMode()">
+      👨‍💼 Modo Administrador
+      <br><small>Criar e gerenciar pontos</small>
+    </button>
+    
+    <button class="home-btn user-btn" onclick="enterUserMode()">
+      👥 Modo Visitante
+      <br><small>Visualizar pontos do evento</small>
+    </button>
+    
+    <div style="margin-top:30px;opacity:0.7;font-size:0.9em;text-align:center">
+      <div id="stored-points-info">Carregando estatísticas...</div>
+    </div>
+  </div>
+
+  <!-- TELA ADMIN -->
+  <div id="admin-screen">
+    <button class="btn btn-back" onclick="goHome()">← Voltar</button>
+    
+    <div id="info" class="admin-header">
+      <strong>🔧 Modo Administrador</strong><br>
+      <div id="calibration-status" class="status-nao-calibrado">
+        ❌ Não calibrado
+      </div>
+      <button id="calibrate-btn" class="btn">Calibrar com QR Code</button>
+      <br><br>
+      <div id="instructions">
+        1. Primeiro, faça a calibração<br>
+        2. Depois toque no retículo para criar cubos
+      </div>
+    </div>
+
+    <div id="status">
+      <div id="points-count">Pontos criados: 0</div>
+      <button id="clear-all-btn" class="btn" style="background:#dc3545;margin-top:10px" onclick="clearAllPoints()">
+        🗑️ Limpar Todos
+      </button>
+    </div>
+  </div>
+
+  <!-- TELA USUÁRIO -->
+  <div id="user-screen">
+    <button class="btn btn-back" onclick="goHome()">← Voltar</button>
+    
+    <div id="info" class="user-header">
+      <strong>👥 Modo Visitante</strong><br>
+      <div id="user-calibration-status" class="status-nao-calibrado">
+        ❌ Não calibrado
+      </div>
+      <button id="user-calibrate-btn" class="btn">Calibrar com QR Code</button>
+      <br><br>
+      <div id="user-instructions">
+        1. Calibre com o QR Code do evento<br>
+        2. Entre no AR para ver os pontos
+      </div>
+    </div>
+
+    <div id="user-stats">
+      <strong>📊 Estatísticas</strong><br>
+      <div id="user-points-available">Pontos disponíveis: 0</div>
+      <div id="user-events-available">Eventos: 0</div>
+      <div id="user-current-event">Evento atual: Nenhum</div>
+    </div>
+  </div>
+
+  <!-- Scanner QR Code -->
+  <div id="qr-scanner">
+    <div id="qr-instructions">
+      <h3>Calibração do Sistema</h3>
+      <p>Aponte a câmera para o QR Code do evento.</p>
+      <p>Este QR deve estar no ponto de entrada ou referência do local.</p>
+    </div>
+    <video id="qr-video" autoplay muted playsinline></video>
+    <button id="cancel-qr" class="btn">Cancelar</button>
+  </div>
+
+  <!-- QR Code Scanner Library -->
+  <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.148.0/build/three.module.js';
+    import { ARButton } from 'https://unpkg.com/three@0.148.0/examples/jsm/webxr/ARButton.js';
+
+    // Variáveis globais
+    let camera, scene, renderer;
+    let controller, reticle;
+    let hitTestSource = null;
+    let localReferenceSpace = null;
+
+    // Sistema de calibração
+    let pontoReferencia = null;
+    let calibrado = false;
+    let pontosCreated = 0;
+    let pontosCarregados = [];
+
+    // Modo atual
+    let currentMode = 'home'; // 'home', 'admin', 'user'
+
+    // QR Scanner
+    let qrStream = null;
+    let qrScanning = false;
+
+    // Inicialização
+    window.addEventListener('load', () => {
+      updateHomeStats();
+    });
+
+    // NAVEGAÇÃO ENTRE TELAS
+    window.enterAdminMode = function() {
+      currentMode = 'admin';
+      document.getElementById('home-screen').style.display = 'none';
+      document.getElementById('admin-screen').style.display = 'block';
+      setupQRCalibration('admin');
+      initAR();
+    }
+
+    window.enterUserMode = function() {
+      currentMode = 'user';
+      document.getElementById('home-screen').style.display = 'none';
+      document.getElementById('user-screen').style.display = 'block';
+      setupQRCalibration('user');
+      updateUserStats();
+      initAR();
+    }
+
+    window.goHome = function() {
+      // Limpar AR
+      if (renderer && renderer.xr && renderer.xr.getSession()) {
+        renderer.xr.getSession().end();
+      }
+      
+      // Parar QR scanner se ativo
+      stopQRScanning();
+      
+      // Resetar estado
+      calibrado = false;
+      pontoReferencia = null;
+      pontosCarregados = [];
+      
+      // Mostrar tela inicial
+      document.getElementById('admin-screen').style.display = 'none';
+      document.getElementById('user-screen').style.display = 'none';
+      document.getElementById('home-screen').style.display = 'flex';
+      
+      currentMode = 'home';
+      updateHomeStats();
+    }
+
+    function updateHomeStats() {
+      const pontos = JSON.parse(localStorage.getItem('pontos') || '[]');
+      const eventos = [...new Set(pontos.map(p => p.qrReferencia))];
+      
+      const infoEl = document.getElementById('stored-points-info');
+      if (pontos.length === 0) {
+        infoEl.innerHTML = 'Nenhum ponto salvo ainda';
+      } else {
+        infoEl.innerHTML = `
+          📍 ${pontos.length} pontos salvos<br>
+          🎪 ${eventos.length} eventos registrados
+        `;
+      }
+    }
+
+    function updateUserStats() {
+      const pontos = JSON.parse(localStorage.getItem('pontos') || '[]');
+      const eventos = [...new Set(pontos.map(p => p.qrReferencia))];
+      
+      document.getElementById('user-points-available').textContent = 
+        `Pontos disponíveis: ${pontos.length}`;
+      document.getElementById('user-events-available').textContent = 
+        `Eventos: ${eventos.length}`;
+      
+      const eventoAtual = pontoReferencia ? pontoReferencia.qrCode : 'Nenhum';
+      document.getElementById('user-current-event').textContent = 
+        `Evento atual: ${eventoAtual}`;
+    }
+
+    // INICIALIZAÇÃO AR
+    function initAR() {
+      const container = document.createElement('div');
+      const activeScreen = currentMode === 'admin' ? 
+        document.getElementById('admin-screen') : 
+        document.getElementById('user-screen');
+      activeScreen.appendChild(container);
+
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
+
+      // Luzes
+      const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+      light.position.set(0.5, 1, 0.25);
+      scene.add(light);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      directionalLight.position.set(1, 1, 1);
+      scene.add(directionalLight);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.xr.enabled = true;
+      container.appendChild(renderer.domElement);
+
+      container.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+
+      // Reticle
+      const geometry = new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI/2);
+      const material = new THREE.MeshBasicMaterial({ 
+        color: currentMode === 'admin' ? 0x00ff00 : 0x4ecdc4 
+      });
+      reticle = new THREE.Mesh(geometry, material);
+      reticle.matrixAutoUpdate = false;
+      reticle.visible = false;
+      scene.add(reticle);
+
+      // Controller
+      controller = renderer.xr.getController(0);
+      controller.addEventListener('select', onSelect);
+      scene.add(controller);
+
+      // Event listeners
+      window.addEventListener('resize', onWindowResize);
+      renderer.xr.addEventListener('sessionstart', onSessionStart);
+      renderer.xr.addEventListener('sessionend', onSessionEnd);
+
+      animate();
+    }
+
+    // QR CODE SETUP
+    function setupQRCalibration(mode) {
+      const calibrateBtn = document.getElementById(mode === 'admin' ? 'calibrate-btn' : 'user-calibrate-btn');
+      const cancelBtn = document.getElementById('cancel-qr');
+
+      calibrateBtn.addEventListener('click', startQRScanning);
+      cancelBtn.addEventListener('click', stopQRScanning);
+    }
+
+    async function startQRScanning() {
+      try {
+        const qrScanner = document.getElementById('qr-scanner');
+        const video = document.getElementById('qr-video');
+
+        qrScanner.style.display = 'flex';
+        qrScanning = true;
+
+        qrStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+
+        video.srcObject = qrStream;
+        video.play();
+
+        scanQRCode(video);
+
+      } catch (error) {
+        console.error('Erro ao acessar câmera:', error);
+        alert('Não foi possível acessar a câmera');
+        stopQRScanning();
+      }
+    }
+
+    function scanQRCode(video) {
+      if (!qrScanning) return;
+
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+
+      function tick() {
+        if (!qrScanning) return;
+
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+          if (code) {
+            processQRCode(code.data);
+            return;
+          }
+        }
+
+        requestAnimationFrame(tick);
+      }
+      tick();
+    }
+
+    function processQRCode(qrData) {
+      console.log('QR Code detectado:', qrData);
+
+      if (qrData.length > 3) {
+        definirPontoReferencia(qrData);
+        stopQRScanning();
+      } else {
+        alert('QR Code inválido. Use um QR Code válido.');
+      }
+    }
+
+    function definirPontoReferencia(qrData) {
+      pontoReferencia = {
+        qrCode: qrData,
+        timestamp: Date.now(),
+        gps: null,
+        arPosition: null
+      };
+
+      calibrado = true;
+      updateCalibrationUI();
+      
+      if (currentMode === 'user') {
+        updateUserStats();
+      }
+      
+      console.log('Sistema calibrado com QR Code:', qrData);
+      alert(`Calibração realizada!\nEvento: ${qrData}\nEntre no modo AR para ${currentMode === 'admin' ? 'criar pontos' : 'visualizar pontos'}.`);
+    }
+
+    function stopQRScanning() {
+      qrScanning = false;
+      
+      if (qrStream) {
+        qrStream.getTracks().forEach(track => track.stop());
+        qrStream = null;
+      }
+
+      document.getElementById('qr-scanner').style.display = 'none';
+    }
+
+    function updateCalibrationUI() {
+      const isUser = currentMode === 'user';
+      const statusEl = document.getElementById(isUser ? 'user-calibration-status' : 'calibration-status');
+      const calibrateBtn = document.getElementById(isUser ? 'user-calibrate-btn' : 'calibrate-btn');
+      const instructionsEl = document.getElementById(isUser ? 'user-instructions' : 'instructions');
+
+      if (calibrado) {
+        statusEl.innerHTML = '✅ Sistema Calibrado';
+        statusEl.className = 'status-calibrado';
+        calibrateBtn.textContent = 'Recalibrar';
+        
+        if (isUser) {
+          const pontos = JSON.parse(localStorage.getItem('pontos') || '[]')
+            .filter(p => p.qrReferencia === pontoReferencia.qrCode);
+          
+          instructionsEl.innerHTML = 
+            `<strong>Evento:</strong> ${pontoReferencia?.qrCode}<br>
+             <strong>Pontos disponíveis:</strong> ${pontos.length}<br>
+             Entre no AR para visualizar`;
+        } else {
+          instructionsEl.innerHTML = 
+            `<strong>QR:</strong> ${pontoReferencia?.qrCode}<br>
+             Toque no retículo para criar novos pontos`;
+        }
+      } else {
+        statusEl.innerHTML = '❌ Não calibrado';
+        statusEl.className = 'status-nao-calibrado';
+        calibrateBtn.textContent = 'Calibrar com QR Code';
+        
+        instructionsEl.innerHTML = isUser ?
+          '1. Calibre com o QR Code do evento<br>2. Entre no AR para ver os pontos' :
+          '1. Primeiro, faça a calibração<br>2. Depois toque no retículo para criar cubos';
+      }
+    }
+
+    // WEBXR HANDLERS
+    function onSessionStart(){
+      const session = renderer.xr.getSession();
+
+      session.requestReferenceSpace('viewer').then(function(viewerReferenceSpace){
+        session.requestHitTestSource({ space: viewerReferenceSpace }).then(function(source){
+          hitTestSource = source;
+        });
+      });
+
+      session.requestReferenceSpace('local').then(function(refSpace){
+        localReferenceSpace = refSpace;
+        
+        if (calibrado && pontoReferencia) {
+          if (!pontoReferencia.arPosition) {
+            pontoReferencia.arPosition = new THREE.Vector3(0, 0, 0);
+          }
+          
+          // Carregar pontos para visualização (ambos os modos)
+          setTimeout(() => {
+            carregarPontosSalvos();
+          }, 1000);
+        }
+      });
+    }
+
+    function onSessionEnd(){
+      hitTestSource = null;
+      localReferenceSpace = null;
+      reticle.visible = false;
+      limparObjetosAR();
+    }
+
+    function limparObjetosAR() {
+      const objetosParaRemover = [];
+      scene.traverse((child) => {
+        if (child.isMesh && child.geometry && child.geometry.type === 'BoxGeometry') {
+          objetosParaRemover.push(child);
+        }
+      });
+      
+      objetosParaRemover.forEach(obj => {
+        scene.remove(obj);
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) obj.material.dispose();
+      });
+      
+      pontosCarregados = [];
+    }
+
+    function onSelect(){
+      if (currentMode !== 'admin') return; // Só admin pode criar pontos
+      
+      if (!calibrado) {
+        alert('Faça a calibração primeiro!');
+        return;
+      }
+
+      if (!reticle.visible) return;
+
+      const boxGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+      const boxMat = new THREE.MeshStandardMaterial({ 
+        roughness: 0.7, 
+        metalness: 0.0,
+        color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5)
+      });
+      const box = new THREE.Mesh(boxGeo, boxMat);
+
+      const position = new THREE.Vector3();
+      position.setFromMatrixPosition(reticle.matrix);
+      
+      const posicaoRelativa = calcularPosicaoRelativa(position);
+      
+      box.position.copy(position);
+      scene.add(box);
+
+      salvarPonto(posicaoRelativa);
+      pontosCreated++;
+      
+      updatePointsCount();
+    }
+
+    function updatePointsCount() {
+      if (currentMode === 'admin') {
+        document.getElementById('points-count').textContent = `Pontos criados: ${pontosCreated}`;
+      }
+    }
+
+    function carregarPontosSalvos() {
+      if (!calibrado || !pontoReferencia) return;
+
+      const pontosSalvos = JSON.parse(localStorage.getItem('pontos') || '[]');
+      const pontosDoEvento = pontosSalvos.filter(ponto => 
+        ponto.qrReferencia === pontoReferencia.qrCode
+      );
+
+      console.log(`Carregando ${pontosDoEvento.length} pontos salvos para modo ${currentMode}...`);
+
+      pontosDoEvento.forEach((ponto, index) => {
+        const posicaoAbsoluta = new THREE.Vector3(
+          ponto.posicaoRelativa.x,
+          ponto.posicaoRelativa.y,
+          ponto.posicaoRelativa.z
+        );
+
+        if (pontoReferencia.arPosition) {
+          posicaoAbsoluta.add(pontoReferencia.arPosition);
+        }
+
+        criarCuboCarregado(posicaoAbsoluta, ponto, index);
+      });
+    }
+
+    function criarCuboCarregado(posicao, dadosPonto, index) {
+      const boxGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+      
+      // Cores diferentes para admin vs usuário
+      const hue = (index * 0.1) % 1;
+      const saturation = currentMode === 'admin' ? 0.5 : 0.7;
+      const lightness = currentMode === 'admin' ? 0.4 : 0.6;
+      
+      const boxMat = new THREE.MeshStandardMaterial({ 
+        roughness: 0.8, 
+        metalness: 0.2,
+        color: new THREE.Color().setHSL(hue, saturation, lightness)
+      });
+      
+      const box = new THREE.Mesh(boxGeo, boxMat);
+      box.position.copy(posicao);
+      
+      box.userData = {
+        carregado: true,
+        dadosOriginais: dadosPonto
+      };
+      
+      scene.add(box);
+      pontosCarregados.push(box);
+    }
+
+    function calcularPosicaoRelativa(posicaoAR) {
+      if (!pontoReferencia || !pontoReferencia.arPosition) {
+        return posicaoAR.clone();
+      }
+      return posicaoAR.clone().sub(pontoReferencia.arPosition);
+    }
+
+    function salvarPonto(posicaoRelativa) {
+      const ponto = {
+        id: generateId(),
+        posicaoRelativa: {
+          x: posicaoRelativa.x,
+          y: posicaoRelativa.y,
+          z: posicaoRelativa.z
+        },
+        qrReferencia: pontoReferencia.qrCode,
+        timestamp: Date.now(),
+        tipo: 'cubo',
+        criadoPor: 'admin'
+      };
+
+      console.log('Ponto salvo:', ponto);
+      
+      const pontosSalvos = JSON.parse(localStorage.getItem('pontos') || '[]');
+      pontosSalvos.push(ponto);
+      localStorage.setItem('pontos', JSON.stringify(pontosSalvos));
+    }
+
+    // UTILITÁRIOS
+    function generateId() {
+      return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    }
+
+    window.clearAllPoints = function() {
+      if (confirm('Tem certeza que deseja limpar TODOS os pontos salvos?')) {
+        localStorage.removeItem('pontos');
+        limparObjetosAR();
+        pontosCreated = 0;
+        updatePointsCount();
+        updateHomeStats();
+        alert('Todos os pontos foram removidos!');
+      }
+    }
+
+    function onWindowResize(){
+      if (camera && renderer) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+    }
+
+    function animate(){
+      if (renderer) {
+        renderer.setAnimationLoop(render);
+      }
+    }
+
+    function render(timestamp, frame){
+      if (frame && hitTestSource && localReferenceSpace){
+        const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+        if (hitTestResults.length > 0){
+          const hit = hitTestResults[0];
+          const pose = hit.getPose(localReferenceSpace);
+
+          // Reticle só aparece no modo admin e se calibrado
+          reticle.visible = calibrado && currentMode === 'admin';
+          if (reticle.visible) {
+            reticle.matrix.fromArray(pose.transform.matrix);
+          }
+        } else {
+          reticle.visible = false;
+        }
+      }
+
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
+    }
+
+  </script>
+</body>
+</html>
