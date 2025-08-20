@@ -1,7 +1,8 @@
 import * as THREE from 'https://unpkg.com/three@0.148.0/build/three.module.js';
+import { ARButton } from 'https://unpkg.com/three@0.148.0/examples/jsm/webxr/ARButton.js';
 
 // Variáveis globais
-let camera, scene, renderer, arSession;
+let camera, scene, renderer;
 let controller, reticle;
 let hitTestSource = null;
 let localReferenceSpace = null;
@@ -19,9 +20,6 @@ let currentMode = 'home'; // 'home', 'admin', 'user'
 let qrStream = null;
 let qrScanning = false;
 
-// Flag para controlar se o AR foi inicializado
-let arInitialized = false;
-
 // Inicialização
 window.addEventListener('load', () => {
     updateHomeStats();
@@ -33,8 +31,7 @@ window.enterAdminMode = function() {
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('admin-screen').style.display = 'block';
     setupQRCalibration('admin');
-    // REMOVIDO: initAR(); - Não inicia AR automaticamente
-    updateCalibrationUI();
+    initAR();
 }
 
 window.enterUserMode = function() {
@@ -43,14 +40,13 @@ window.enterUserMode = function() {
     document.getElementById('user-screen').style.display = 'block';
     setupQRCalibration('user');
     updateUserStats();
-    // REMOVIDO: initAR(); - Não inicia AR automaticamente
-    updateCalibrationUI();
+    initAR();
 }
 
 window.goHome = function() {
-    // Limpar AR se estiver ativo
+    // Limpar AR
     if (renderer && renderer.xr && renderer.xr.getSession()) {
-        renderer.xr.getSession().end();
+    renderer.xr.getSession().end();
     }
     
     // Parar QR scanner se ativo
@@ -60,10 +56,6 @@ window.goHome = function() {
     calibrado = false;
     pontoReferencia = null;
     pontosCarregados = [];
-    arInitialized = false;
-    
-    // Limpar container AR se existir
-    cleanupARContainer();
     
     // Mostrar tela inicial
     document.getElementById('admin-screen').style.display = 'none';
@@ -80,12 +72,12 @@ function updateHomeStats() {
     
     const infoEl = document.getElementById('stored-points-info');
     if (pontos.length === 0) {
-        infoEl.innerHTML = 'Nenhum ponto salvo ainda';
+    infoEl.innerHTML = 'Nenhum ponto salvo ainda';
     } else {
-        infoEl.innerHTML = `
-            📍 ${pontos.length} pontos salvos<br>
-            🎪 ${eventos.length} eventos registrados
-        `;
+    infoEl.innerHTML = `
+        📍 ${pontos.length} pontos salvos<br>
+        🎪 ${eventos.length} eventos registrados
+    `;
     }
 }
 
@@ -94,44 +86,21 @@ function updateUserStats() {
     const eventos = [...new Set(pontos.map(p => p.qrReferencia))];
     
     document.getElementById('user-points-available').textContent = 
-        `Pontos disponíveis: ${pontos.length}`;
+    `Pontos disponíveis: ${pontos.length}`;
     document.getElementById('user-events-available').textContent = 
-        `Eventos: ${eventos.length}`;
+    `Eventos: ${eventos.length}`;
     
     const eventoAtual = pontoReferencia ? pontoReferencia.qrCode : 'Nenhum';
     document.getElementById('user-current-event').textContent = 
-        `Evento atual: ${eventoAtual}`;
+    `Evento atual: ${eventoAtual}`;
 }
 
-// Função para limpar container AR
-function cleanupARContainer() {
-    if (renderer) {
-        renderer.dispose();
-        renderer = null;
-    }
-    
-    // Remove qualquer container AR existente
-    const containers = document.querySelectorAll('canvas');
-    containers.forEach(canvas => {
-        if (canvas.parentNode) {
-            canvas.parentNode.removeChild(canvas);
-        }
-    });
-}
-
-// Função para inicializar a cena Three.js E iniciar AR
-async function initARAfterQR() {
-    if (arInitialized) {
-        console.log('AR já foi inicializado');
-        return;
-    }
-
-    console.log('Inicializando AR após detecção do QR Code...');
-
+// INICIALIZAÇÃO AR
+function initAR() {
     const container = document.createElement('div');
     const activeScreen = currentMode === 'admin' 
-        ? document.getElementById('admin-screen') 
-        : document.getElementById('user-screen');
+    ? document.getElementById('admin-screen') 
+    : document.getElementById('user-screen');
     activeScreen.appendChild(container);
 
     scene = new THREE.Scene();
@@ -153,10 +122,12 @@ async function initARAfterQR() {
     renderer.xr.enabled = true;
     container.appendChild(renderer.domElement);
 
+    container.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+
     // Reticle
     const geometry = new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI/2);
     const material = new THREE.MeshBasicMaterial({ 
-        color: currentMode === 'admin' ? 0x00ff00 : 0x4ecdc4 
+    color: currentMode === 'admin' ? 0x00ff00 : 0x4ecdc4 
     });
     reticle = new THREE.Mesh(geometry, material);
     reticle.matrixAutoUpdate = false;
@@ -173,65 +144,7 @@ async function initARAfterQR() {
     renderer.xr.addEventListener('sessionstart', onSessionStart);
     renderer.xr.addEventListener('sessionend', onSessionEnd);
 
-    // Agora SIM inicia o AR automaticamente
-    const arStarted = await startARSession();
-    
-    if (arStarted) {
-        arInitialized = true;
-        animate();
-        console.log('AR iniciado automaticamente após QR Code!');
-    } else {
-        console.error('Falha ao iniciar AR após QR Code');
-    }
-}
-
-async function startARSession() {
-    try {
-        // Verificar se WebXR está disponível
-        if (!('xr' in navigator)) {
-            console.warn('WebXR não está disponível neste navegador');
-            return false;
-        }
-
-        // Verificar suporte para AR
-        const isARSupported = await navigator.xr.isSessionSupported('immersive-ar');
-        if (!isARSupported) {
-            console.warn('AR não é suportado neste dispositivo');
-            return false;
-        }
-
-        // Configurações da sessão AR
-        const sessionInit = {
-            requiredFeatures: ['hit-test'],
-            optionalFeatures: ['dom-overlay'],
-            domOverlay: { root: document.body }
-        };
-
-        // Criar e iniciar sessão AR
-        const xrSession = await navigator.xr.requestSession('immersive-ar', sessionInit);
-        
-        // Configurar a sessão no renderer
-        await renderer.xr.setSession(xrSession);
-
-        return true;
-
-    } catch (error) {
-        console.error('Erro ao iniciar AR:', error);
-        
-        // Mensagens específicas para diferentes tipos de erro
-        if (error.name === 'NotAllowedError') {
-            console.warn('Permissões de câmera foram negadas');
-            alert('Permissão de câmera necessária para AR');
-        } else if (error.name === 'NotSupportedError') {
-            console.warn('AR não é suportado ou não está disponível');
-            alert('AR não é suportado neste dispositivo');
-        } else if (error.name === 'InvalidStateError') {
-            console.warn('Estado inválido para iniciar AR');
-            alert('Erro de estado do AR');
-        }
-        
-        return false;
-    }
+    animate();
 }
 
 // QR CODE SETUP
@@ -245,25 +158,25 @@ function setupQRCalibration(mode) {
 
 async function startQRScanning() {
     try {
-        const qrScanner = document.getElementById('qr-scanner');
-        const video = document.getElementById('qr-video');
+    const qrScanner = document.getElementById('qr-scanner');
+    const video = document.getElementById('qr-video');
 
-        qrScanner.style.display = 'flex';
-        qrScanning = true;
+    qrScanner.style.display = 'flex';
+    qrScanning = true;
 
-        qrStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' }
-        });
+    qrStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+    });
 
-        video.srcObject = qrStream;
-        video.play();
+    video.srcObject = qrStream;
+    video.play();
 
-        scanQRCode(video);
+    scanQRCode(video);
 
     } catch (error) {
-        console.error('Erro ao acessar câmera:', error);
-        alert('Não foi possível acessar a câmera');
-        stopQRScanning();
+    console.error('Erro ao acessar câmera:', error);
+    alert('Não foi possível acessar a câmera');
+    stopQRScanning();
     }
 }
 
@@ -274,74 +187,63 @@ function scanQRCode(video) {
     const context = canvas.getContext('2d');
 
     function tick() {
-        if (!qrScanning) return;
+    if (!qrScanning) return;
 
-        if (video.readyState === video.HAVE_ENOUGH_DATA) {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-            const code = jsQR(imageData.data, imageData.width, imageData.height);
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
 
-            if (code) {
-                processQRCode(code.data);
-                return;
-            }
+        if (code) {
+        processQRCode(code.data);
+        return;
         }
+    }
 
-        requestAnimationFrame(tick);
+    requestAnimationFrame(tick);
     }
     tick();
 }
 
-async function processQRCode(qrData) {
+function processQRCode(qrData) {
     console.log('QR Code detectado:', qrData);
 
     if (qrData.length > 3) {
-        // Define o ponto de referência
-        definirPontoReferencia(qrData);
-        
-        // Para o scanner
-        stopQRScanning();
-        
-        // AGORA inicia o AR automaticamente
-        await initARAfterQR();
-        
+    definirPontoReferencia(qrData);
+    stopQRScanning();
     } else {
-        alert('QR Code inválido. Use um QR Code válido.');
+    alert('QR Code inválido. Use um QR Code válido.');
     }
 }
 
 function definirPontoReferencia(qrData) {
     pontoReferencia = {
-        qrCode: qrData,
-        timestamp: Date.now(),
-        gps: null,
-        arPosition: null
+    qrCode: qrData,
+    timestamp: Date.now(),
+    gps: null,
+    arPosition: null
     };
 
     calibrado = true;
     updateCalibrationUI();
     
     if (currentMode === 'user') {
-        updateUserStats();
+    updateUserStats();
     }
     
     console.log('Sistema calibrado com QR Code:', qrData);
-    
-    // Mensagem informativa sem bloquear o fluxo
-    setTimeout(() => {
-        alert(`Calibração realizada!\nEvento: ${qrData}\nIniciando AR...`);
-    }, 500);
+    alert(`Calibração realizada!\nEvento: ${qrData}\nEntre no modo AR para ${currentMode === 'admin' ? 'criar pontos' : 'visualizar pontos'}.`);
 }
 
 function stopQRScanning() {
     qrScanning = false;
     
     if (qrStream) {
-        qrStream.getTracks().forEach(track => track.stop());
-        qrStream = null;
+    qrStream.getTracks().forEach(track => track.stop());
+    qrStream = null;
     }
 
     document.getElementById('qr-scanner').style.display = 'none';
@@ -354,31 +256,31 @@ function updateCalibrationUI() {
     const instructionsEl = document.getElementById(isUser ? 'user-instructions' : 'instructions');
 
     if (calibrado) {
-        statusEl.innerHTML = '✅ Sistema Calibrado';
-        statusEl.className = 'status-calibrado';
-        calibrateBtn.textContent = 'Recalibrar';
+    statusEl.innerHTML = '✅ Sistema Calibrado';
+    statusEl.className = 'status-calibrado';
+    calibrateBtn.textContent = 'Recalibrar';
+    
+    if (isUser) {
+        const pontos = JSON.parse(localStorage.getItem('pontos') || '[]')
+        .filter(p => p.qrReferencia === pontoReferencia.qrCode);
         
-        if (isUser) {
-            const pontos = JSON.parse(localStorage.getItem('pontos') || '[]')
-                .filter(p => p.qrReferencia === pontoReferencia.qrCode);
-            
-            instructionsEl.innerHTML = 
-                `<strong>Evento:</strong> ${pontoReferencia?.qrCode}<br>
-                <strong>Pontos disponíveis:</strong> ${pontos.length}<br>
-                ${arInitialized ? 'AR ativo - visualize os pontos!' : 'Iniciando AR...'}`;
-        } else {
-            instructionsEl.innerHTML = 
-                `<strong>QR:</strong> ${pontoReferencia?.qrCode}<br>
-                ${arInitialized ? 'Toque no retículo para criar novos pontos' : 'Iniciando AR...'}`;
-        }
+        instructionsEl.innerHTML = 
+        `<strong>Evento:</strong> ${pontoReferencia?.qrCode}<br>
+            <strong>Pontos disponíveis:</strong> ${pontos.length}<br>
+            Entre no AR para visualizar`;
     } else {
-        statusEl.innerHTML = '❌ Não calibrado';
-        statusEl.className = 'status-nao-calibrado';
-        calibrateBtn.textContent = 'Calibrar com QR Code';
-        
-        instructionsEl.innerHTML = isUser ?
-            '1. Calibre com o QR Code do evento<br>2. O AR iniciará automaticamente' :
-            '1. Primeiro, faça a calibração<br>2. O AR iniciará automaticamente após o QR';
+        instructionsEl.innerHTML = 
+        `<strong>QR:</strong> ${pontoReferencia?.qrCode}<br>
+            Toque no retículo para criar novos pontos`;
+    }
+    } else {
+    statusEl.innerHTML = '❌ Não calibrado';
+    statusEl.className = 'status-nao-calibrado';
+    calibrateBtn.textContent = 'Calibrar com QR Code';
+    
+    instructionsEl.innerHTML = isUser ?
+        '1. Calibre com o QR Code do evento<br>2. Entre no AR para ver os pontos' :
+        '1. Primeiro, faça a calibração<br>2. Depois toque no retículo para criar cubos';
     }
 }
 
@@ -387,28 +289,25 @@ function onSessionStart(){
     const session = renderer.xr.getSession();
 
     session.requestReferenceSpace('viewer').then(function(viewerReferenceSpace){
-        session.requestHitTestSource({ space: viewerReferenceSpace }).then(function(source){
-            hitTestSource = source;
-        });
+    session.requestHitTestSource({ space: viewerReferenceSpace }).then(function(source){
+        hitTestSource = source;
+    });
     });
 
     session.requestReferenceSpace('local').then(function(refSpace){
-        localReferenceSpace = refSpace;
-        
-        if (calibrado && pontoReferencia) {
-            if (!pontoReferencia.arPosition) {
-                pontoReferencia.arPosition = new THREE.Vector3(0, 0, 0);
-            }
-            
-            // Carregar pontos para visualização (ambos os modos)
-            setTimeout(() => {
-                carregarPontosSalvos();
-            }, 1000);
+    localReferenceSpace = refSpace;
+    
+    if (calibrado && pontoReferencia) {
+        if (!pontoReferencia.arPosition) {
+        pontoReferencia.arPosition = new THREE.Vector3(0, 0, 0);
         }
+        
+        // Carregar pontos para visualização (ambos os modos)
+        setTimeout(() => {
+        carregarPontosSalvos();
+        }, 1000);
+    }
     });
-
-    // Atualizar UI para mostrar que o AR está ativo
-    updateCalibrationUI();
 }
 
 function onSessionEnd(){
@@ -416,21 +315,20 @@ function onSessionEnd(){
     localReferenceSpace = null;
     reticle.visible = false;
     limparObjetosAR();
-    arInitialized = false;
 }
 
 function limparObjetosAR() {
     const objetosParaRemover = [];
     scene.traverse((child) => {
-        if (child.isMesh && child.geometry && child.geometry.type === 'BoxGeometry') {
-            objetosParaRemover.push(child);
-        }
+    if (child.isMesh && child.geometry && child.geometry.type === 'BoxGeometry') {
+        objetosParaRemover.push(child);
+    }
     });
     
     objetosParaRemover.forEach(obj => {
-        scene.remove(obj);
-        if (obj.geometry) obj.geometry.dispose();
-        if (obj.material) obj.material.dispose();
+    scene.remove(obj);
+    if (obj.geometry) obj.geometry.dispose();
+    if (obj.material) obj.material.dispose();
     });
     
     pontosCarregados = [];
@@ -440,17 +338,17 @@ function onSelect(){
     if (currentMode !== 'admin') return; // Só admin pode criar pontos
     
     if (!calibrado) {
-        alert('Faça a calibração primeiro!');
-        return;
+    alert('Faça a calibração primeiro!');
+    return;
     }
 
     if (!reticle.visible) return;
 
     const boxGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
     const boxMat = new THREE.MeshStandardMaterial({ 
-        roughness: 0.7, 
-        metalness: 0.0,
-        color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5)
+    roughness: 0.7, 
+    metalness: 0.0,
+    color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5)
     });
     const box = new THREE.Mesh(boxGeo, boxMat);
 
@@ -470,7 +368,7 @@ function onSelect(){
 
 function updatePointsCount() {
     if (currentMode === 'admin') {
-        document.getElementById('points-count').textContent = `Pontos criados: ${pontosCreated}`;
+    document.getElementById('points-count').textContent = `Pontos criados: ${pontosCreated}`;
     }
 }
 
@@ -479,23 +377,23 @@ function carregarPontosSalvos() {
 
     const pontosSalvos = JSON.parse(localStorage.getItem('pontos') || '[]');
     const pontosDoEvento = pontosSalvos.filter(ponto => 
-        ponto.qrReferencia === pontoReferencia.qrCode
+    ponto.qrReferencia === pontoReferencia.qrCode
     );
 
     console.log(`Carregando ${pontosDoEvento.length} pontos salvos para modo ${currentMode}...`);
 
     pontosDoEvento.forEach((ponto, index) => {
-        const posicaoAbsoluta = new THREE.Vector3(
-            ponto.posicaoRelativa.x,
-            ponto.posicaoRelativa.y,
-            ponto.posicaoRelativa.z
-        );
+    const posicaoAbsoluta = new THREE.Vector3(
+        ponto.posicaoRelativa.x,
+        ponto.posicaoRelativa.y,
+        ponto.posicaoRelativa.z
+    );
 
-        if (pontoReferencia.arPosition) {
-            posicaoAbsoluta.add(pontoReferencia.arPosition);
-        }
+    if (pontoReferencia.arPosition) {
+        posicaoAbsoluta.add(pontoReferencia.arPosition);
+    }
 
-        criarCuboCarregado(posicaoAbsoluta, ponto, index);
+    criarCuboCarregado(posicaoAbsoluta, ponto, index);
     });
 }
 
@@ -508,17 +406,17 @@ function criarCuboCarregado(posicao, dadosPonto, index) {
     const lightness = currentMode === 'admin' ? 0.4 : 0.6;
     
     const boxMat = new THREE.MeshStandardMaterial({ 
-        roughness: 0.8, 
-        metalness: 0.2,
-        color: new THREE.Color().setHSL(hue, saturation, lightness)
+    roughness: 0.8, 
+    metalness: 0.2,
+    color: new THREE.Color().setHSL(hue, saturation, lightness)
     });
     
     const box = new THREE.Mesh(boxGeo, boxMat);
     box.position.copy(posicao);
     
     box.userData = {
-        carregado: true,
-        dadosOriginais: dadosPonto
+    carregado: true,
+    dadosOriginais: dadosPonto
     };
     
     scene.add(box);
@@ -527,23 +425,23 @@ function criarCuboCarregado(posicao, dadosPonto, index) {
 
 function calcularPosicaoRelativa(posicaoAR) {
     if (!pontoReferencia || !pontoReferencia.arPosition) {
-        return posicaoAR.clone();
+    return posicaoAR.clone();
     }
     return posicaoAR.clone().sub(pontoReferencia.arPosition);
 }
 
 function salvarPonto(posicaoRelativa) {
     const ponto = {
-        id: generateId(),
-        posicaoRelativa: {
-            x: posicaoRelativa.x,
-            y: posicaoRelativa.y,
-            z: posicaoRelativa.z
-        },
-        qrReferencia: pontoReferencia.qrCode,
-        timestamp: Date.now(),
-        tipo: 'cubo',
-        criadoPor: 'admin'
+    id: generateId(),
+    posicaoRelativa: {
+        x: posicaoRelativa.x,
+        y: posicaoRelativa.y,
+        z: posicaoRelativa.z
+    },
+    qrReferencia: pontoReferencia.qrCode,
+    timestamp: Date.now(),
+    tipo: 'cubo',
+    criadoPor: 'admin'
     };
 
     console.log('Ponto salvo:', ponto);
@@ -560,48 +458,48 @@ function generateId() {
 
 window.clearAllPoints = function() {
     if (confirm('Tem certeza que deseja limpar TODOS os pontos salvos?')) {
-        localStorage.removeItem('pontos');
-        limparObjetosAR();
-        pontosCreated = 0;
-        updatePointsCount();
-        updateHomeStats();
-        alert('Todos os pontos foram removidos!');
+    localStorage.removeItem('pontos');
+    limparObjetosAR();
+    pontosCreated = 0;
+    updatePointsCount();
+    updateHomeStats();
+    alert('Todos os pontos foram removidos!');
     }
 }
 
 function onWindowResize(){
     if (camera && renderer) {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
     }
 }
 
 function animate(){
     if (renderer) {
-        renderer.setAnimationLoop(render);
+    renderer.setAnimationLoop(render);
     }
 }
 
 function render(timestamp, frame){
     if (frame && hitTestSource && localReferenceSpace){
-        const hitTestResults = frame.getHitTestResults(hitTestSource);
+    const hitTestResults = frame.getHitTestResults(hitTestSource);
 
-        if (hitTestResults.length > 0){
-            const hit = hitTestResults[0];
-            const pose = hit.getPose(localReferenceSpace);
+    if (hitTestResults.length > 0){
+        const hit = hitTestResults[0];
+        const pose = hit.getPose(localReferenceSpace);
 
-            // Reticle só aparece no modo admin e se calibrado
-            reticle.visible = calibrado && currentMode === 'admin';
-            if (reticle.visible) {
-                reticle.matrix.fromArray(pose.transform.matrix);
-            }
-        } else {
-            reticle.visible = false;
+        // Reticle só aparece no modo admin e se calibrado
+        reticle.visible = calibrado && currentMode === 'admin';
+        if (reticle.visible) {
+        reticle.matrix.fromArray(pose.transform.matrix);
         }
+    } else {
+        reticle.visible = false;
+    }
     }
 
     if (renderer && scene && camera) {
-        renderer.render(scene, camera);
+    renderer.render(scene, camera);
     }
 }
