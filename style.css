@@ -1,0 +1,207 @@
+html,
+body {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #111;
+    color: #ddd
+}
+
+/* Tela Inicial */
+#home-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+}
+
+#home-screen h1 {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+    text-align: center;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+#home-screen p {
+    font-size: 1.1em;
+    margin-bottom: 40px;
+    text-align: center;
+    max-width: 400px;
+    line-height: 1.5;
+    opacity: 0.9;
+}
+
+.home-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    padding: 20px 40px;
+    margin: 10px;
+    border-radius: 12px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    min-width: 200px;
+    text-align: center;
+}
+
+.home-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+}
+
+.admin-btn {
+    border-color: #ff6b35;
+    color: #ff6b35
+}
+
+.admin-btn:hover {
+    background: rgba(255, 107, 53, 0.2);
+    border-color: #ff6b35
+}
+
+.user-btn {
+    border-color: #4ecdc4;
+    color: #4ecdc4
+}
+
+.user-btn:hover {
+    background: rgba(78, 205, 196, 0.2);
+    border-color: #4ecdc4
+}
+
+/* Telas da Aplicação */
+#admin-screen,
+#user-screen {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#info {
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 2;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    border-radius: 8px;
+    max-width: 300px
+}
+
+#qr-scanner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: none;
+    z-index: 10;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center
+}
+
+#qr-video {
+    width: 80%;
+    max-width: 400px;
+    border-radius: 8px
+}
+
+#qr-instructions {
+    color: #fff;
+    text-align: center;
+    margin: 20px;
+    font-size: 16px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px;
+    border-radius: 8px
+}
+
+.btn {
+    background: #007bff;
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin: 5px;
+    font-size: 14px;
+    transition: background 0.3s ease;
+}
+
+.btn:hover {
+    background: #0056b3
+}
+
+.btn:disabled {
+    background: #666;
+    cursor: not-allowed
+}
+
+.btn-back {
+    background: #6c757d;
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    z-index: 3;
+}
+
+.btn-back:hover {
+    background: #545b62
+}
+
+#status {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    border-radius: 6px;
+    z-index: 5
+}
+
+.status-calibrado {
+    color: #00ff00
+}
+
+.status-nao-calibrado {
+    color: #ff6600
+}
+
+.admin-header {
+    border-left: 4px solid #ff6b35
+}
+
+.user-header {
+    border-left: 4px solid #4ecdc4
+}
+
+canvas {
+    display: block
+}
+
+/* Estatísticas para usuário */
+#user-stats {
+    position: fixed;
+    right: 20px;
+    top: 20px;
+    z-index: 2;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    border-radius: 8px;
+    max-width: 250px;
+}
