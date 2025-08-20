@@ -2,7 +2,7 @@ import * as THREE from 'https://unpkg.com/three@0.148.0/build/three.module.js';
 import { ARButton } from 'https://unpkg.com/three@0.148.0/examples/jsm/webxr/ARButton.js';
 
 // Variáveis globais
-let camera, scene, renderer;
+let camera, scene, renderer, arSession;
 let controller, reticle;
 let hitTestSource = null;
 let localReferenceSpace = null;
@@ -96,7 +96,7 @@ function updateUserStats() {
 }
 
 // INICIALIZAÇÃO AR
-function initAR() {
+async function initAR() {
     const container = document.createElement('div');
     const activeScreen = currentMode === 'admin' 
     ? document.getElementById('admin-screen') 
@@ -122,7 +122,7 @@ function initAR() {
     renderer.xr.enabled = true;
     container.appendChild(renderer.domElement);
 
-    container.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+    // container.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
 
     // Reticle
     const geometry = new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI/2);
@@ -144,7 +144,60 @@ function initAR() {
     renderer.xr.addEventListener('sessionstart', onSessionStart);
     renderer.xr.addEventListener('sessionend', onSessionEnd);
 
+    // ===== INÍCIO AUTOMÁTICO DO AR =====
+    await startARAutomatically();
+
     animate();
+}
+
+// Função para iniciar AR automaticamente
+async function startARAutomatically() {
+    try {
+        // Verificar se WebXR está disponível
+        if (!('xr' in navigator)) {
+            console.warn('WebXR não está disponível neste navegador');
+            return false;
+        }
+
+        // Verificar suporte para AR
+        const isARSupported = await navigator.xr.isSessionSupported('immersive-ar');
+        if (!isARSupported) {
+            console.warn('AR não é suportado neste dispositivo');
+            return false;
+        }
+
+        console.log('Iniciando AR automaticamente...');
+
+        // Configurações da sessão AR
+        const sessionInit = {
+            requiredFeatures: ['hit-test'],
+            optionalFeatures: ['dom-overlay'],
+            domOverlay: { root: document.body }
+        };
+
+        // Criar e iniciar sessão AR
+        const xrSession = await navigator.xr.requestSession('immersive-ar', sessionInit);
+        
+        // Configurar a sessão no renderer
+        await renderer.xr.setSession(xrSession);
+
+        console.log('Sessão AR iniciada automaticamente!');
+        return true;
+
+    } catch (error) {
+        console.error('Erro ao iniciar AR automaticamente:', error);
+        
+        // Mensagens específicas para diferentes tipos de erro
+        if (error.name === 'NotAllowedError') {
+            console.warn('Permissões de câmera foram negadas');
+        } else if (error.name === 'NotSupportedError') {
+            console.warn('AR não é suportado ou não está disponível');
+        } else if (error.name === 'InvalidStateError') {
+            console.warn('Estado inválido para iniciar AR');
+        }
+        
+        return false;
+    }
 }
 
 // QR CODE SETUP
