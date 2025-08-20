@@ -151,7 +151,7 @@ function initAR() {
 }
 
 // Função para iniciar AR automaticamente
-async function startARAutomatically() {
+function startARAutomatically() {
     try {
         // Verificar se WebXR está disponível
         if (!('xr' in navigator)) {
@@ -160,7 +160,7 @@ async function startARAutomatically() {
         }
 
         // Verificar suporte para AR
-        const isARSupported = await navigator.xr.isSessionSupported('immersive-ar');
+        const isARSupported = navigator.xr.isSessionSupported('immersive-ar');
         if (!isARSupported) {
             console.warn('AR não é suportado neste dispositivo');
             return false;
@@ -176,10 +176,10 @@ async function startARAutomatically() {
         };
 
         // Criar e iniciar sessão AR
-        const xrSession = await navigator.xr.requestSession('immersive-ar', sessionInit);
+        const xrSession = navigator.xr.requestSession('immersive-ar', sessionInit);
         
         // Configurar a sessão no renderer
-        await renderer.xr.setSession(xrSession);
+        renderer.xr.setSession(xrSession);
 
         console.log('Sessão AR iniciada automaticamente!');
         return true;
