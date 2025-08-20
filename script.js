@@ -95,12 +95,12 @@ function updateUserStats() {
     `Evento atual: ${eventoAtual}`;
 }
 
-// INICIALIZAÇÃO AR
-function initAR() {
+// Função para inicializar a cena Three.js (SEM iniciar AR ainda)
+async function initAR() {
     const container = document.createElement('div');
     const activeScreen = currentMode === 'admin' 
-    ? document.getElementById('admin-screen') 
-    : document.getElementById('user-screen');
+        ? document.getElementById('admin-screen') 
+        : document.getElementById('user-screen');
     activeScreen.appendChild(container);
 
     scene = new THREE.Scene();
@@ -122,12 +122,10 @@ function initAR() {
     renderer.xr.enabled = true;
     container.appendChild(renderer.domElement);
 
-    // container.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
-
     // Reticle
     const geometry = new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI/2);
     const material = new THREE.MeshBasicMaterial({ 
-    color: currentMode === 'admin' ? 0x00ff00 : 0x4ecdc4 
+        color: currentMode === 'admin' ? 0x00ff00 : 0x4ecdc4 
     });
     reticle = new THREE.Mesh(geometry, material);
     reticle.matrixAutoUpdate = false;
@@ -144,14 +142,16 @@ function initAR() {
     renderer.xr.addEventListener('sessionstart', onSessionStart);
     renderer.xr.addEventListener('sessionend', onSessionEnd);
 
-    // ===== INÍCIO AUTOMÁTICO DO AR =====
-    startARAutomatically();
+    // ===== NÃO INICIA AR AQUI! =====
+    // O AR só vai iniciar quando startARAfterQR() for chamado
+    console.log('Cena Three.js inicializada. Aguardando QR Code...');
+
+    startARAfterQR();
 
     animate();
 }
 
-// Função para iniciar AR automaticamente
-function startARAutomatically() {
+async function startARAfterQR() {
     try {
         // Verificar se WebXR está disponível
         if (!('xr' in navigator)) {
@@ -160,13 +160,13 @@ function startARAutomatically() {
         }
 
         // Verificar suporte para AR
-        const isARSupported = navigator.xr.isSessionSupported('immersive-ar');
+        const isARSupported = await navigator.xr.isSessionSupported('immersive-ar');
         if (!isARSupported) {
             console.warn('AR não é suportado neste dispositivo');
             return false;
         }
 
-        console.log('Iniciando AR automaticamente...');
+        console.log('QR Code detectado! Iniciando AR...');
 
         // Configurações da sessão AR
         const sessionInit = {
@@ -176,16 +176,16 @@ function startARAutomatically() {
         };
 
         // Criar e iniciar sessão AR
-        const xrSession = navigator.xr.requestSession('immersive-ar', sessionInit);
+        const xrSession = await navigator.xr.requestSession('immersive-ar', sessionInit);
         
         // Configurar a sessão no renderer
-        renderer.xr.setSession(xrSession);
+        await renderer.xr.setSession(xrSession);
 
-        console.log('Sessão AR iniciada automaticamente!');
+        console.log('Sessão AR iniciada após QR Code!');
         return true;
 
     } catch (error) {
-        console.error('Erro ao iniciar AR automaticamente:', error);
+        console.error('Erro ao iniciar AR após QR:', error);
         
         // Mensagens específicas para diferentes tipos de erro
         if (error.name === 'NotAllowedError') {
