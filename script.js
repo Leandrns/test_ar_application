@@ -96,7 +96,7 @@ function updateUserStats() {
 }
 
 // INICIALIZAÇÃO AR
-async function initAR() {
+function initAR() {
     const container = document.createElement('div');
     const activeScreen = currentMode === 'admin' 
     ? document.getElementById('admin-screen') 
@@ -145,7 +145,7 @@ async function initAR() {
     renderer.xr.addEventListener('sessionend', onSessionEnd);
 
     // ===== INÍCIO AUTOMÁTICO DO AR =====
-    await startARAutomatically();
+    startARAutomatically();
 
     animate();
 }
