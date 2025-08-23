@@ -234,7 +234,7 @@ function definirPontoReferencia(qrData) {
     }
     
     console.log('Sistema calibrado com QR Code:', qrData);
-    alert(`Calibração realizada!\nEvento: ${qrData}\nEntre no modo AR para ${currentMode === 'admin' ? 'criar pontos' : 'visualizar pontos'}.`);
+    alert(`Calibração realizada!\nEvento: ${qrData}\nEntre no modo AR para ${currentMode === 'admin' ? 'criar pontos' : 'visualizar pontos'}.\nCONTINUE APONTANDO O CELULAR PARA O QR CODE PARA CLICAR EM START AR`);
 
     // start AR aqui
     initAR();
@@ -244,42 +244,12 @@ function definirPontoReferencia(qrData) {
 
     // if (botaoAR) {
     //     console.log('Iniciando AR automaticamente...');
-    //     mostrarNotificacao("Iniciando AR...", 1000);
     //     setTimeout(botaoAR.click(), 1000)
     // } else {
     //     console.log("Botão não encontrado!");
     // }
 }
 
-function mostrarNotificacao(mensagem, duracao = 3000) {
-      // Criar elemento de notificação
-      const notificacao = document.createElement('div');
-      notificacao.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(0, 0, 0, 0.9);
-        color: white;
-        padding: 20px 30px;
-        border-radius: 10px;
-        font-size: 16px;
-        z-index: 1000;
-        text-align: center;
-        backdrop-filter: blur(10px);
-        border: 2px solid ${currentMode === 'admin' ? '#ff6b35' : '#4ecdc4'};
-      `;
-      notificacao.textContent = mensagem;
-      
-      document.body.appendChild(notificacao);
-      
-      // Remover após duração especificada
-      setTimeout(() => {
-        if (notificacao && notificacao.parentNode) {
-          notificacao.parentNode.removeChild(notificacao);
-        }
-      }, duracao);
-    }
 
 function stopQRScanning() {
     qrScanning = false;
