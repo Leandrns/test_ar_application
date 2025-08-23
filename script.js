@@ -31,7 +31,6 @@ window.enterAdminMode = function() {
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('admin-screen').style.display = 'block';
     setupQRCalibration('admin');
-    initAR();
 }
 
 window.enterUserMode = function() {
@@ -40,7 +39,6 @@ window.enterUserMode = function() {
     document.getElementById('user-screen').style.display = 'block';
     setupQRCalibration('user');
     updateUserStats();
-    initAR();
 }
 
 window.goHome = function() {
@@ -236,6 +234,9 @@ function definirPontoReferencia(qrData) {
     
     console.log('Sistema calibrado com QR Code:', qrData);
     alert(`Calibração realizada!\nEvento: ${qrData}\nEntre no modo AR para ${currentMode === 'admin' ? 'criar pontos' : 'visualizar pontos'}.`);
+
+    // start AR aqui
+    initAR();
 }
 
 function stopQRScanning() {
