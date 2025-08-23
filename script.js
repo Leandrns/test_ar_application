@@ -244,7 +244,7 @@ function definirPontoReferencia(qrData) {
     if (botaoAR) {
         console.log('Iniciando AR automaticamente...');
         mostrarNotificacao("Iniciando AR...", 1000);
-        botaoAR.click();
+        setTimeout(botaoAR.click(), 1000)
     } else {
         console.log("Botão não encontrado!");
     }
