@@ -371,6 +371,7 @@ function onSelect() {
             const model = gltf.scene;
 
             model.position.copy(position);
+            model.position.y += 0.2
             model.scale.set(0.1, 0.1, 0.1); // ajuste da escala do modelo
 
             // Cor aleatória (como no cubo antigo)
@@ -441,7 +442,7 @@ function criarModeloCarregado(posicao, dadosPonto, index) {
 
             // Define a posição do modelo no espaço
             model.position.copy(posicao);
-            model.position.y =+ 0.2; // deixando o modelo mais alto
+            model.position.y += 0.2; // deixando o modelo mais alto
 
             // Opcional: ajustar escala
             model.scale.set(0.1, 0.1, 0.1);
