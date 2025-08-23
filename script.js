@@ -1,5 +1,6 @@
 import * as THREE from 'https://unpkg.com/three@0.179.1/build/three.module.js';
 import { ARButton } from 'https://unpkg.com/three@0.179.1/examples/jsm/webxr/ARButton.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 
 // Variáveis globais
 let camera, scene, renderer;
@@ -347,36 +348,59 @@ function limparObjetosAR() {
     pontosCarregados = [];
 }
 
-function onSelect(){
+function onSelect() {
     if (currentMode !== 'admin') return; // Só admin pode criar pontos
     
     if (!calibrado) {
-    alert('Faça a calibração primeiro!');
-    return;
+        alert('Faça a calibração primeiro!');
+        return;
     }
 
     if (!reticle.visible) return;
 
-    const boxGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
-    const boxMat = new THREE.MeshStandardMaterial({ 
-    roughness: 0.7, 
-    metalness: 0.0,
-    color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5)
-    });
-    const box = new THREE.Mesh(boxGeo, boxMat);
-
+    // Pega posição do retículo
     const position = new THREE.Vector3();
     position.setFromMatrixPosition(reticle.matrix);
-    
-    const posicaoRelativa = calcularPosicaoRelativa(position);
-    
-    box.position.copy(position);
-    scene.add(box);
 
-    salvarPonto(posicaoRelativa);
-    pontosCreated++;
-    
-    updatePointsCount();
+    const posicaoRelativa = calcularPosicaoRelativa(position);
+
+    // --- Substitui o cubo por modelo carregado ---
+    const loader = new THREE.GLTFLoader();
+    loader.load(
+        'modelos/meuModelo.glb', // caminho do modelo
+        (gltf) => {
+            const model = gltf.scene;
+
+            model.position.copy(position);
+            model.scale.set(0.1, 0.1, 0.1); // ajuste da escala do modelo
+
+            // Cor aleatória (como no cubo antigo)
+            const cor = new THREE.Color().setHSL(Math.random(), 0.7, 0.5);
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    child.material.color = cor;
+                }
+            });
+
+            scene.add(model);
+
+            // Salva metadados
+            model.userData = {
+                carregado: true,
+                dadosOriginais: posicaoRelativa
+            };
+
+            salvarPonto(posicaoRelativa);
+            pontosCreated++;
+            updatePointsCount();
+        },
+        (xhr) => {
+            console.log(`Carregando modelo: ${(xhr.loaded / xhr.total * 100).toFixed(2)}%`);
+        },
+        (error) => {
+            console.error('Erro ao carregar modelo', error);
+        }
+    );
 }
 
 function updatePointsCount() {
@@ -406,34 +430,53 @@ function carregarPontosSalvos() {
         posicaoAbsoluta.add(pontoReferencia.arPosition);
     }
 
-    criarCuboCarregado(posicaoAbsoluta, ponto, index);
+    criarModeloCarregado(posicaoAbsoluta, ponto, index);
     });
 }
 
-function criarCuboCarregado(posicao, dadosPonto, index) {
-    const boxGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
-    
-    // Cores diferentes para admin vs usuário
-    const hue = (index * 0.1) % 1;
-    const saturation = currentMode === 'admin' ? 0.5 : 0.7;
-    const lightness = currentMode === 'admin' ? 0.4 : 0.6;
-    
-    const boxMat = new THREE.MeshStandardMaterial({ 
-    roughness: 0.8, 
-    metalness: 0.2,
-    color: new THREE.Color().setHSL(hue, saturation, lightness)
-    });
-    
-    const box = new THREE.Mesh(boxGeo, boxMat);
-    box.position.copy(posicao);
-    
-    box.userData = {
-    carregado: true,
-    dadosOriginais: dadosPonto
-    };
-    
-    scene.add(box);
-    pontosCarregados.push(box);
+function criarModeloCarregado(posicao, dadosPonto, index) {
+    const loader = new THREE.GLTFLoader();
+
+    loader.load(
+        './map_pointer_3d_icon.glb', // caminho do modelo
+        (gltf) => {
+            const model = gltf.scene;
+
+            // Define a posição do modelo no espaço
+            model.position.copy(posicao);
+            model.position.y =+ 0.2; // deixando o modelo mais alto
+
+            // Opcional: ajustar escala
+            model.scale.set(0.1, 0.1, 0.1);
+
+            // Armazena dados
+            model.userData = {
+                carregado: true,
+                dadosOriginais: dadosPonto
+            };
+
+            // cores diferentes para admin vs usuário:
+            const hue = (index * 0.1) % 1;
+            const saturation = currentMode === 'admin' ? 0.5 : 0.7;
+            const lightness = currentMode === 'admin' ? 0.4 : 0.6;
+            const cor = new THREE.Color().setHSL(hue, saturation, lightness);
+
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    child.material.color = cor; // aplica cor ao modelo
+                }
+            });
+
+            scene.add(model);
+            pontosCarregados.push(model);
+        },
+        (xhr) => {
+            console.log(`Carregando modelo: ${(xhr.loaded / xhr.total * 100).toFixed(2)}%`);
+        },
+        (error) => {
+            console.error('Erro ao carregar modelo', error);
+        }
+    );
 }
 
 function calcularPosicaoRelativa(posicaoAR) {
