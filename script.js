@@ -239,15 +239,16 @@ function definirPontoReferencia(qrData) {
     // start AR aqui
     initAR();
 
-    botaoAR = document.getElementById("ARButton");
+    // Clique automático (não ta funcionando)
+    // botaoAR = document.getElementById("ARButton");
 
-    if (botaoAR) {
-        console.log('Iniciando AR automaticamente...');
-        mostrarNotificacao("Iniciando AR...", 1000);
-        setTimeout(botaoAR.click(), 1000)
-    } else {
-        console.log("Botão não encontrado!");
-    }
+    // if (botaoAR) {
+    //     console.log('Iniciando AR automaticamente...');
+    //     mostrarNotificacao("Iniciando AR...", 1000);
+    //     setTimeout(botaoAR.click(), 1000)
+    // } else {
+    //     console.log("Botão não encontrado!");
+    // }
 }
 
 function mostrarNotificacao(mensagem, duracao = 3000) {
