@@ -12,6 +12,7 @@ let pontoReferencia = null;
 let calibrado = false;
 let pontosCreated = 0;
 let pontosCarregados = [];
+let botaoAR = null
 
 // Modo atual
 let currentMode = 'home'; // 'home', 'admin', 'user'
@@ -120,7 +121,8 @@ function initAR() {
     renderer.xr.enabled = true;
     container.appendChild(renderer.domElement);
 
-    container.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+    botaoAR = ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] })
+    container.appendChild(botaoAR);
 
     // Reticle
     const geometry = new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI/2);
@@ -238,8 +240,12 @@ function definirPontoReferencia(qrData) {
     // start AR aqui
     initAR();
 
-    const arButton = document.querySelector('[style*="enter-ar"], [style*="ar-supported"]');
-    arButton.click();
+    if (botaoAR) {
+        console.log('Iniciando AR automaticamente...');
+        botaoAR.click();
+    } else {
+        console.log("Botão não encontrado!");
+    }
 }
 
 function stopQRScanning() {
