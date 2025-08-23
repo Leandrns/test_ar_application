@@ -1,5 +1,5 @@
-import * as THREE from 'https://unpkg.com/three@0.148.0/build/three.module.js';
-import { ARButton } from 'https://unpkg.com/three@0.148.0/examples/jsm/webxr/ARButton.js';
+import * as THREE from 'https://unpkg.com/three@0.179.1/build/three.module.js';
+import { ARButton } from 'https://unpkg.com/three@0.179.1/examples/jsm/webxr/ARButton.js';
 
 // Variáveis globais
 let camera, scene, renderer;
