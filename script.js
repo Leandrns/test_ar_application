@@ -121,8 +121,7 @@ function initAR() {
     renderer.xr.enabled = true;
     container.appendChild(renderer.domElement);
 
-    botaoAR = ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] })
-    container.appendChild(botaoAR);
+    container.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
 
     // Reticle
     const geometry = new THREE.RingGeometry(0.06, 0.08, 32).rotateX(-Math.PI/2);
@@ -239,6 +238,8 @@ function definirPontoReferencia(qrData) {
 
     // start AR aqui
     initAR();
+
+    botaoAR = document.getElementById("ARButton");
 
     if (botaoAR) {
         console.log('Iniciando AR automaticamente...');
