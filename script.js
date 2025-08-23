@@ -1,6 +1,6 @@
-import * as THREE from 'https://unpkg.com/three@0.179.1/build/three.module.js';
-import { ARButton } from 'https://unpkg.com/three@0.179.1/examples/jsm/webxr/ARButton.js';
-import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import * as THREE from 'https://unpkg.com/three@0.121.1/build/three.module.js';
+import { ARButton } from 'https://unpkg.com/three@0.121.1/examples/jsm/webxr/ARButton.js';
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/loaders/GLTFLoader.js";
 
 // Variáveis globais
 let camera, scene, renderer;
@@ -14,6 +14,7 @@ let calibrado = false;
 let pontosCreated = 0;
 let pontosCarregados = [];
 let botaoAR = null
+const loader = new GLTFLoader();
 
 // Modo atual
 let currentMode = 'home'; // 'home', 'admin', 'user'
@@ -364,10 +365,8 @@ function onSelect() {
 
     const posicaoRelativa = calcularPosicaoRelativa(position);
 
-    // --- Substitui o cubo por modelo carregado ---
-    const loader = new THREE.GLTFLoader();
     loader.load(
-        'modelos/meuModelo.glb', // caminho do modelo
+        './map_pointer_3d_icon.glb', // caminho do modelo
         (gltf) => {
             const model = gltf.scene;
 
@@ -435,8 +434,6 @@ function carregarPontosSalvos() {
 }
 
 function criarModeloCarregado(posicao, dadosPonto, index) {
-    const loader = new THREE.GLTFLoader();
-
     loader.load(
         './map_pointer_3d_icon.glb', // caminho do modelo
         (gltf) => {
