@@ -237,6 +237,18 @@ function definirPontoReferencia(qrData) {
 
     // start AR aqui
     initAR();
+
+    const arButton = document.querySelector('[style*="enter-ar"], [style*="ar-supported"]');
+      
+      if (arButton) {
+        console.log('Iniciando AR automaticamente...');
+        
+        // Mostrar notificação
+        // mostrarNotificacao(`🎯 AR iniciando automaticamente...`, 2000);
+        
+        // Simular clique no botão AR
+        arButton.click();
+      }
 }
 
 function stopQRScanning() {
